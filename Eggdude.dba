@@ -1,0 +1,2642 @@
+`initial setup
+sync on
+hide mouse
+
+`changing the random sequence
+dim newrnd(1)
+load array "random.dat",newrnd(1)
+newrnd = newrnd(1)
+inc newrnd
+randomize newrnd
+newrnd(1) = newrnd
+save array "random.dat",newrnd(1)
+undim newrnd(1)
+`logo
+load bitmap "MILOGO.jpg",1
+get image 1,0,0,640,480
+delete bitmap 1
+repeat
+paste image 1,0,0
+sync
+until spacekey() = 1
+for fade = 0 to 255 step 3
+set gamma 255-fade,255-fade,255-fade
+paste image 1,0,0
+sync
+next fade
+delete image 1
+
+_restart_game:
+load music "shady valley.mid",1
+loop music 1
+load sound "choose.wav",1
+`MENU
+dim menunames$(4)
+menunames$(1) = "New Game"
+menunames$(2) = "Hi Score"
+menunames$(3) = "Credits"
+menunames$(4) = "Quit"
+currsel = 1
+load bitmap "edmain.jpg",1
+get image 1,0,0,1280,480
+delete bitmap 1
+for fade = 0 to 255 step 3
+set gamma fade,fade,fade
+paste image 1,0,0
+sync
+next fade
+set text font "Arial"
+set text size 30
+do
+paste image 1,0,0
+textypos = 240
+for menu = 1 to 4
+ink rgb(0,0,0),rgb(255,255,255)
+if currsel = menu then ink rgb(255,255,255),0
+center text 540,textypos,menunames$(menu)
+inc textypos,30
+next menu
+if upkey() = 1 and keypressed = 0 then play sound 1 ; dec currsel ; keypressed = 1
+if downkey() = 1 and keypressed = 0 then play sound 1 ; inc currsel ; keypressed = 1
+if currsel > 4 then currsel = 1
+if currsel < 1 then currsel = 4
+if upkey() = 0 and downkey() = 0 then keypressed = 0
+`returnkey pressed
+if returnkey() = 1
+play sound 1
+`start
+if currsel = 1 then ink rgb(255,0,0),0 ; center text 320,240,"Loading..." ; stop music 1 ; delete music 1 ; delete sound 1 ; goto _end_menu
+`hi score
+if currsel = 2
+for setup = 0 to 640 step 5
+paste image 1,0-setup,0
+sync
+next setup
+dim hiscore#(10)
+dim hiscore$(10)
+load array "hiscoreno.dat",hiscore#(10)
+load array "hiscorename.dat",hiscore$(10)
+ink rgb(255,255,255),0
+set text font "Arial"
+set text size 30
+repeat
+paste image 1,-640,0
+center text 320,30,"Name                        Score"
+sbypos = 30
+for setup = 1 to 10
+inc sbypos,40
+center text 205,sbypos,hiscore$(setup)
+textdest = 390
+if hiscore#(setup) < 1000000 then text textdest,sbypos,"0" ; inc textdest,14
+if hiscore#(setup) < 100000 then text textdest,sbypos,"0" ; inc textdest,14
+if hiscore#(setup) < 10000 then text textdest,sbypos,"0" ; inc textdest,14
+if hiscore#(setup) < 1000 then text textdest,sbypos,"0" ; inc textdest,14
+if hiscore#(setup) < 100 then text textdest,sbypos,"0" ; inc textdest,14
+if hiscore#(setup) < 10 then text textdest,sbypos,"0" ; inc textdest,14
+text textdest,sbypos,str$(hiscore#(setup))
+next setup
+sync
+until spacekey() = 1
+undim hiscore#(10)
+undim hiscore$(10)
+for setup = 0 to 640 step 5
+paste image 1,-640+setup,0
+sync
+next setup
+endif
+`credits
+if currsel = 3
+for setup = 0 to 640 step 5
+paste image 1,0-setup,0
+sync
+next setup
+dim hiscore#(10)
+dim hiscore$(10)
+load array "hiscoreno.dat",hiscore#(10)
+load array "hiscorename.dat",hiscore$(10)
+ink rgb(255,255,255),0
+set text font "Arial"
+set text size 30
+repeat
+paste image 1,-640,0
+center text 320,40,"Game Design By: Daniel Howlett"
+center text 320,80,"Programming By: Daniel Howlett"
+center text 320,120,"3D Modelling By: Daniel Howlett"
+center text 320,160,"Texturing By: Daniel Howlett"
+center text 320,280,"Special Thanks to DarkMatter CD-Rom"
+center text 320,320,"Special Thanks to Kwik Snax Game Designer"
+center text 320,360,"Special Thanks to Rach Callan"
+center text 320,400,"who typed a few words of code"
+sync
+until spacekey() = 1
+for setup = 0 to 640 step 5
+paste image 1,-640+setup,0
+sync
+next setup
+endif
+`exit
+if currsel = 4 then end
+endif
+sync
+loop
+
+_end_menu:
+undim menunames$(4)
+
+`setting up arrays
+dim pastposx(80)
+dim pastposz(80)
+dim pastyrot(80)
+dim bfrank(8)
+dim bfscattering(9)
+dim solscatx(9)
+dim solscatz(9)
+dim monstermove$(4)
+monstermove$(1) = "H-Mummy-Move.x"
+monstermove$(2) = "H-Bones-Move.x"
+monstermove$(3) = "H-Zombie-Move.x"
+monstermove$(4) = "H-Spectre-Move.x"
+dim monspd#(4)
+dim mondelaytarget(4)
+dim monactive(4)
+dim mondelay(4)
+dim monwait(4)
+dim montype(4)
+dim mondie(2,4)
+dim monstartpos(3,4)
+dim monavate(4)
+
+`player start variables
+playerscore = 0
+playerlives = 3
+currlvl = 0
+
+`loading music and sounds
+load music "pinnacle.mid",1
+load sound "chooseweap.wav",1
+load sound "weapchosen.wav",2
+load sound "bfinchest.wav",3
+load sound "die.wav",4
+load sound "throw.wav",5
+load sound "explode.wav",6
+load sound "bombdrop.wav",7
+load sound "malzomhit.wav",8
+load sound "malwalhit.wav",9
+load sound "firemove.wav",10
+load sound "gungemove.wav",11
+load sound "gungehit.wav",12
+load sound "wordtype.wav",13
+load sound "tink.wav",14
+
+`loading images
+`happy
+load bitmap "eggdude.jpg",1
+get image 1,0,0,128,128
+delete bitmap 1
+`sad
+load bitmap "eggdudesad.jpg",1
+get image 2,0,0,128,128
+delete bitmap 1
+`matfloor
+load bitmap "floor1.jpg",1
+get image 3,0,0,1536,256
+delete bitmap 1
+`metal
+load bitmap "iron02.bmp",1
+get image 4,0,0,256,256
+delete bitmap 1
+`graves
+load bitmap "marble01.bmp",1
+get image 5,0,0,256,256
+delete bitmap 1
+`fruits
+load image "apple.bmp",6
+load image "bananas.bmp",7
+load image "orange.bmp",8
+`gunge
+load bitmap "gungemove.bmp",1
+gungepicx = 0
+for gungepic = 11 to 20
+get image gungepic,gungepicx,0,gungepicx+29,29
+inc gungepicx,30
+next gungepic
+delete bitmap 1
+`explosion
+load bitmap "explosion.bmp",1
+explpicx = 0
+explpicy = 0
+for explpic = 21 to 36
+get image explpic,explpicx,explpicy,explpicx+127,explpicy+127
+inc explpicx,128
+if explpicx > 384 then inc explpicy,128 ; explpicx = 0
+next explpic
+delete bitmap 1
+`fireball
+load bitmap "fireball.bmp",1
+get image 37,0,0,100,100
+get image 38,101,0,200,100
+delete bitmap 1
+`bfforscr
+load image "bf4scr.bmp",42
+`malforscr
+load image "mal4scr.bmp",43
+`edforscr
+load image "edlife.bmp",44
+
+`making eggdude
+load object "eggdude.3ds",1
+texture limb 1,3,1
+yrotate object 1,180
+fix object pivot 1
+set object speed 1,15
+clear all object keyframes 1
+`making static
+set object keyframe 1,0
+`making animation
+offset limb 1,1,0,0,-10 ; offset limb 1,2,0,0,10 ; offset limb 1,3,0,0,0 ; offset limb 1,4,0,0,-10 ; offset limb 1,5,0,0,10 ; set object keyframe 1,1
+offset limb 1,1,0,0,0 ; offset limb 1,2,0,5,0 ; offset limb 1,3,0,3,0 ; offset limb 1,4,0,0,0 ; offset limb 1,5,0,0,0 ; set object keyframe 1,5
+offset limb 1,1,0,0,10 ; offset limb 1,2,0,0,-10 ; offset limb 1,3,0,0,0 ; offset limb 1,4,0,0,10 ; offset limb 1,5,0,0,-10 ; set object keyframe 1,9
+offset limb 1,1,0,5,0 ; offset limb 1,2,0,0,0 ; offset limb 1,3,0,3,0 ; offset limb 1,4,0,0,0 ; offset limb 1,5,0,0,0 ; set object keyframe 1,13
+offset limb 1,1,0,0,-10 ; offset limb 1,2,0,0,10 ; offset limb 1,3,0,0,0 ; offset limb 1,4,0,0,-10 ; offset limb 1,5,0,0,10 ; set object keyframe 1,17
+
+`setting object to static
+set object frame 1,0
+
+`hand
+load object "edhand.3ds",14
+glue object to limb 14,1,3
+position object 14,-17,28,-5
+hide object 14
+
+`sticking weapons to ed hand
+load object "mallet.x",31
+scale object 31,9000,9000,9000
+glue object to limb 31,1,5
+position object 31,-17,38,-2
+hide object 31
+load object "grenade.x",32
+color limb 32,3,rgb(100,100,100)
+color limb 32,5,rgb(100,100,100)
+color limb 32,6,rgb(0,100,0)
+scale object 32,7000,7000,7000
+glue object to limb 32,1,5
+position object 32,-15,30,0
+hide object 32
+load object "bomb.3ds",33
+scale object 33,75,75,75
+glue object to limb 33,1,5
+position object 33,-18,23,0
+hide object 33
+load object "magcwand.x",34
+scale object 34,5000,5000,5000
+glue object to limb 34,1,5
+position object 34,-17,38,-2
+hide object 34
+`explosion
+make object plain 35,50,50
+set object 35,1,0,1
+position object 35,0,15,0
+xrotate object 35,90
+fix object pivot 35
+hide object 35
+`fireball
+make object plain 36,30,30
+texture object 36,37
+set object 36,1,0,1
+position object 36,0,15,0
+xrotate object 36,90
+fix object pivot 36
+hide object 36
+
+`making butterflies
+for setup = 2 to 9
+load object "butrfly1.x",setup
+scale object setup,20000,20000,20000
+set object speed setup,5
+clear all object keyframes setup
+`making animation
+offset limb setup,1,0,-0.05,0 ; set object keyframe setup,0
+offset limb setup,1,0,0.05,0 ; set object keyframe setup,4
+offset limb setup,1,0,-0.05,0 ; set object keyframe setup,8
+loop object setup
+next setup
+
+`making fruits for points
+make object plain 10,30,30
+texture object 10,6
+set object 10,1,0,1
+position object 10,0,15,0
+xrotate object 10,50
+fix object pivot 10
+hide object 10
+fruittime = 0
+
+`making HUD plains
+`bfremain
+make object plain 302,20,20
+set object 302,1,0,1
+texture object 302,42
+position object 302,100,110,200
+lock object on 302
+`weaprem
+make object plain 303,20,20
+set object 303,1,0,1
+texture object 303,43
+position object 303,100,-100,200
+lock object on 303
+`lives
+for lives = 304 to 306
+make object plain lives,20,20
+set object lives,1,0,1
+texture object lives,44
+next lives
+position object 304,-140,-100,200
+lock object on 304
+position object 305,-120,-100,200
+lock object on 305
+position object 306,-100,-100,200
+lock object on 306
+
+`making level
+make matrix 1,1400,800,28,16
+position matrix 1,-350,0,-100
+prepare matrix texture 1,3,6,1
+`updown arrows
+set matrix tile 1,11,2,2
+set matrix tile 1,11,8,2
+set matrix tile 1,17,2,2
+set matrix tile 1,17,8,2
+`permanent gravebeds
+set matrix tile 1,5,14,4
+set matrix tile 1,17,14,4
+set matrix tile 1,21,14,4
+set matrix tile 1,25,14,4
+set matrix tile 1,1,12,4
+set matrix tile 1,9,12,4
+set matrix tile 1,13,12,4
+set matrix tile 1,17,12,4
+set matrix tile 1,25,12,4
+set matrix tile 1,1,10,4
+set matrix tile 1,9,10,4
+set matrix tile 1,21,10,4
+set matrix tile 1,5,8,4
+set matrix tile 1,5,6,4
+update matrix 1
+
+`make outskirts of level
+`trees
+for setup = 201 to 206
+load object "tree.3ds",setup
+color object setup,rgb(100,100,0)
+next setup
+position object 201,-75,0,475
+position object 202,-25,0,125
+position object 203,275,0,375
+position object 204,425,0,-25
+position object 205,525,0,425
+position object 206,775,0,275
+
+`graves
+dim gravesx(14)
+dim gravesz(14)
+load array "gravesx.dat",gravesx(14)
+load array "gravesz.dat",gravesz(14)
+for setup = 223 to 236
+make object cube setup,10
+scale object setup,50,300,230
+texture object setup,5
+position object setup,gravesx(setup-222),15,gravesz(setup-222)
+next setup
+undim gravesx(14)
+undim gravesz(14)
+`make plains
+for setup=101 to 193
+load object "mflow.3ds",setup
+texture object setup,4
+next setup
+`monster generator
+load object "graves.3ds",194
+`chest
+load object "chest2.x",195
+yrotate object 195,180
+fix object pivot 195
+scale object 195,4000,4000,4000
+`gunge
+make object plain 25,30,30
+currgungepic = 11
+gungepicchange = 0
+texture object 25,currgungepic
+set object 25,1,0,1
+position object 25,0,15,0
+xrotate object 25,90
+fix object pivot 25
+hide object 25
+
+_level_begin:
+`reset weapons
+gosub _reset_weapeff
+`player level variables
+inc currlvl
+bfremain = 8
+minrem = 2
+secrem = 30
+secdown = 0
+`reset all variables
+upmove = 0
+downmove = 0
+leftmove = 0
+rightmove = 0
+fruittime = 0
+fruitactive = 0
+ftext = 0
+bfdelay = 0
+monadel = 0
+
+`WEAPON SELECT
+currweap = 0
+`temp arrays
+dim taweapqty(4)
+for setup = 1 to 4
+taweapqty(setup) = rnd(4)
+next setup
+newcurrweapsel = 0
+newcurrweapseltg = 70
+`make selection box
+ink rgb(255,255,255),0
+box 0,0,200,120
+ink rgb(0,0,0),rgb(255,255,255)
+box 4,4,196,116
+get image 101,0,0,200,120
+ink rgb(255,255,255),0
+set text size 30
+`load weapsel screen
+load bitmap "weapsel.jpg",1
+get image 100,0,0,640,480
+delete bitmap 1
+`begin select loop
+repeat
+paste image 100,0,0
+center text 220,200,"x " + str$(taweapqty(1))
+center text 220,380,"x " + str$(taweapqty(2))
+center text 520,200,"x " + str$(taweapqty(3))
+center text 520,380,"x " + str$(taweapqty(4))
+if newcurrweapsel > 0 then dec newcurrweapsel,10
+if newcurrweapsel < 1
+play sound 1
+newcurrweapsel = newcurrweapseltg
+dec newcurrweapseltg,2
+oldcurrweapsel = currweapsel
+redo_currweapsel:
+currweapsel = rnd(3)+1
+if oldcurrweapsel = currweapsel then goto redo_currweapsel
+endif
+if currweapsel = 1 then sprite 1,70,140,101
+if currweapsel = 2 then sprite 1,70,320,101
+if currweapsel = 3 then sprite 1,370,140,101
+if currweapsel = 4 then sprite 1,370,320,101
+if returnkey() = 1 then newcurrweapseltg = 0
+if newcurrweapseltg = 0 then play sound 2 ; currweap = currweapsel ; weapqty = (taweapqty(currweapsel))
+sync
+until currweap > 0
+`end it
+undim taweapqty(4)
+delete image 100
+delete image 101
+delete sprite 1
+oweapqty = weapqty
+
+`setting up curr weap
+for setup = 1 to 4
+hide object setup+30
+if currweap = setup then show object setup+30
+next setup
+
+`numbers for rotation
+read vertical
+`|
+for setup=101 to vertical
+yrotate object setup,90
+read setupx
+read setupz
+position object setup,setupx,0,setupz
+next setup
+`_
+for setup = vertical+1 to 193
+yrotate object setup,0
+read setupx
+read setupz
+position object setup,setupx,0,setupz
+next setup
+`reset old graves
+if currlvl > 1
+set matrix tile 1,(object position x(194)+325)/50,((object position z(194)+75)/50)+1,1
+set matrix tile 1,((object position x(194)+325)/50)+1,(object position z(194)+75)/50,1
+set matrix tile 1,(object position x(194)+325)/50,((object position z(194)+75)/50)-1,1
+set matrix tile 1,((object position x(194)+325)/50)-1,(object position z(194)+75)/50,1
+endif
+`monster generator
+for setup = 1 to 4
+texture limb 194,setup,5
+next setup
+read setupx
+read setupz
+position object 194,setupx,0,setupz
+`gravebeds
+set matrix tile 1,(object position x(194)+325)/50,((object position z(194)+75)/50)+1,3
+set matrix tile 1,((object position x(194)+325)/50)+1,(object position z(194)+75)/50,4
+set matrix tile 1,(object position x(194)+325)/50,((object position z(194)+75)/50)-1,5
+set matrix tile 1,((object position x(194)+325)/50)-1,(object position z(194)+75)/50,6
+update matrix 1
+`chest
+read setupx
+read setupz
+read yrot
+yrotate object 195,yrot
+position object 195,setupx,20,setupz
+`eggdude position
+read setupx
+read setupz
+read yrot
+position object 1,setupx,0,setupz
+yrotate object 1,yrot
+`butterfly positions
+for setup = 2 to 9
+bfscattering(setup) = 0
+show object setup
+read setupx
+read setupz
+read yrot
+position object setup,setupx,15,setupz
+yrotate object setup,yrot
+next setup
+`destroyable walls
+for setup = 11 to 13
+if object exist(setup) = 0
+load object "mfblow.3ds",setup
+texture object setup,4
+endif
+read setupx
+read setupz
+read yrot
+position object setup,setupx,0,setupz
+yrotate object setup,yrot
+next setup
+`monsters
+for setup = 21 to 24
+`reset old
+if object exist(setup) = 1 then delete object setup
+mondelay(setup-20) = 0
+monwait(setup-20) = 0
+mondie(setup-20) = 0
+monadel = 0
+`make new
+read montype
+read setupx
+monstartpos(1,setup-20) = setupx
+read setupz
+monstartpos(2,setup-20) = setupz
+read yrot
+monstartpos(3,setup-20) = yrot
+monactive(setup-20) = 0
+montype(setup-20) = montype
+load object monstermove$(montype),setup
+`mummy
+if montype = 1 then set object speed setup,5 ; monspd#(setup - 20) = 0.5 ; mondelaytarget(setup - 20) = 100
+`skele
+if montype = 2 then set object speed setup,20 ; monspd#(setup - 20) = 2 ; mondelaytarget(setup - 20) = 25
+`zombie
+if montype = 3 then set object speed setup,10 ; monspd#(setup - 20) = 1 ; mondelaytarget(setup - 20) = 50
+`spectre
+if montype = 4 then set object speed setup,10 ; monspd#(setup - 20) = 1 ; mondelaytarget(setup - 20) = 50
+yrotate object setup,180
+fix object pivot setup
+scale object setup,2500,2500,2500
+set object setup,1,0,1
+position object setup,setupx,0,setupz
+yrotate object setup,yrot
+hide object setup
+next setup
+
+`camera pan across to eggdude
+position camera 0,160,object position z(1)-110
+`text settings
+ink rgb(255,255,255),0
+set text font "Arial"
+set text size 36
+`start music
+loop music 1
+`panning:
+repeat
+xrotate camera 0
+yrotate camera 90
+move camera 3
+yrotate camera 0
+xrotate camera 50
+center text 320,240,"Level: "+str$(currlvl)
+sync
+until camera position x() > object position x(1)
+position camera object position x(1),160,object position z(1) - 110
+
+`--------------------------------------------------------------
+do
+`--------------------------------------------------------------
+
+if bfremain = 0
+gosub _end_lvl_score
+if currlvl < 12 then goto _level_begin
+if currlvl = 12
+endgame("Congratulations")
+goto _restart_game
+endif
+endif
+
+if playerlives < 0
+endgame("Game Over")
+gosub _high_score
+goto _restart_game
+endif
+
+`HUD
+ink rgb(255,255,255),0
+set text font "Arial"
+set text size 36
+
+`score
+textdest = 5
+if playerscore < 1000000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 100000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 10000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 1000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 100 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 10 then text textdest,5,"0" ; inc textdest,20
+text textdest,5,str$(playerscore)
+
+`timer
+inc secdown
+if secdown = 30 then secdown = 0 ; dec secrem
+if secrem < 0 then secrem = 59 ; dec minrem
+
+text 300,5,str$(minrem)
+text 320,5,":"
+if secrem < 10
+text 330,5,"0"
+text 350,5,str$(secrem)
+else
+text 330,5,str$(secrem)
+endif
+
+`lives
+if playerlives < 3 then hide object 306
+if playerlives < 2 then hide object 305
+if playerlives < 1 then hide object 304
+
+`bfremain
+text 540,5,"x"
+text 560,5,str$(bfremain)
+
+`weaprem
+text 540,425,"x"
+text 560,425,str$(weapqty)
+
+`M O V E M E N T
+`UP MOVE
+if upkey() = 1 and upmove = 0 and rightmove = 0 and downmove = 0 and leftmove = 0
+yrotate object 1,0
+`planning ahead
+move object 1,25
+`collision detection
+`walls
+for wallcoll = 101 to 193
+if object collision(1,wallcoll) = 1 then move object 1,-25 ; stop object 1 ; set object frame 1,0 ; goto _skip_upmove
+next wallcoll
+`destroyable walls
+for wallcoll = 11 to 13
+if object exist(wallcoll) = 1
+if object collision(1,wallcoll) = 1 then move object 1,-25 ; stop object 1 ; set object frame 1,0 ; goto _skip_upmove
+endif
+next wallcoll
+`generator
+move object 1,25
+if object collision(1,194) = 1 then move object 1,-50 ; stop object 1 ; set object frame 1,0 ; goto _skip_upmove
+`chest
+if object collision(1,195) = 1
+if bfrank(1) = 0 then move object 1,-50 ; stop object 1 ; set object frame 1,0 ; goto _skip_upmove
+if bfrank(1) > 0 then move object 1,-50 ; stop object 1 ; set object frame 1,0 ; gosub _bf_inchest ; goto _skip_upmove
+endif
+`if no collision then move
+move object 1,-50
+upmove = 25
+endif
+_skip_upmove:
+`DOWN MOVE
+if downkey() = 1 and upmove = 0 and rightmove = 0 and downmove = 0 and leftmove = 0
+yrotate object 1,180
+`planning ahead
+move object 1,25
+`collision detection
+`walls
+for wallcoll = 101 to 193
+if object collision(1,wallcoll) = 1 then move object 1,-25 ; stop object 1 ; set object frame 1,0 ; goto _skip_downmove
+next wallcoll
+`destroyable walls
+for wallcoll = 11 to 13
+if object exist(wallcoll) = 1
+if object collision(1,wallcoll) = 1 then move object 1,-25 ; stop object 1 ; set object frame 1,0 ; goto _skip_downmove
+endif
+next wallcoll
+`generator
+move object 1,25
+if object collision(1,194) = 1 then move object 1,-50 ; stop object 1 ; set object frame 1,0 ; goto _skip_downmove
+`chest
+if object collision(1,195) = 1
+if bfrank(1) = 0 then move object 1,-50 ; stop object 1 ; set object frame 1,0 ; goto _skip_downmove
+if bfrank(1) > 0 then move object 1,-50 ; stop object 1 ; set object frame 1,0 ; gosub _bf_inchest ; goto _skip_downmove
+endif
+`if no collision then move
+move object 1,-50
+downmove = 25
+endif
+_skip_downmove:
+`LEFT MOVE
+if leftkey() = 1 and upmove = 0 and rightmove = 0 and downmove = 0 and leftmove = 0
+yrotate object 1,270
+`planning ahead
+move object 1,25
+`collision detection
+`walls
+for wallcoll = 101 to 193
+if object collision(1,wallcoll) = 1 then move object 1,-25 ; stop object 1 ; set object frame 1,0 ; goto _skip_leftmove
+next wallcoll
+`destroyable walls
+for wallcoll = 11 to 13
+if object exist(wallcoll) = 1
+if object collision(1,wallcoll) = 1 then move object 1,-25 ; stop object 1 ; set object frame 1,0 ; goto _skip_leftmove
+endif
+next wallcoll
+`generator
+move object 1,25
+if object collision(1,194) = 1 then move object 1,-50 ; stop object 1 ; set object frame 1,0 ; goto _skip_leftmove
+`chest
+if object collision(1,195) = 1
+if bfrank(1) = 0 then move object 1,-50 ; stop object 1 ; set object frame 1,0 ; goto _skip_leftmove
+if bfrank(1) > 0 then move object 1,-50 ; stop object 1 ; set object frame 1,0 ; gosub _bf_inchest ; goto _skip_leftmove
+endif
+`if no collision then move
+move object 1,-50
+leftmove = 25
+endif
+_skip_leftmove:
+`RIGHT MOVE
+if rightkey() = 1 and upmove = 0 and rightmove = 0 and downmove = 0 and leftmove = 0
+yrotate object 1,90
+`planning ahead
+move object 1,25
+`collision detection
+`walls
+for wallcoll = 101 to 193
+if object collision(1,wallcoll) = 1 then move object 1,-25 ; stop object 1 ; set object frame 1,0 ; goto _skip_rightmove
+next wallcoll
+`destroyable walls
+for wallcoll = 11 to 13
+if object exist(wallcoll) = 1
+if object collision(1,wallcoll) = 1 then move object 1,-25 ; stop object 1 ; set object frame 1,0 ; goto _skip_rightmove
+endif
+next wallcoll
+`generator
+move object 1,25
+if object collision(1,194) = 1 then move object 1,-50 ; stop object 1 ; set object frame 1,0 ; goto _skip_rightmove
+`chest
+if object collision(1,195) = 1
+if bfrank(1) = 0 then move object 1,-50 ; stop object 1 ; set object frame 1,0 ; goto _skip_rightmove
+if bfrank(1) > 0 then move object 1,-50 ; stop object 1 ; set object frame 1,0 ; gosub _bf_inchest ; goto _skip_rightmove
+endif
+`if no collision then move
+move object 1,-50
+rightmove = 25
+endif
+_skip_rightmove:
+`MOVE EGGDUDE
+if upmove > 0
+dec upmove
+loop object 1,1,17
+move object 1,2
+gosub _update_prevpos
+endif
+if downmove > 0
+dec downmove
+loop object 1,1,17
+move object 1,2
+gosub _update_prevpos
+endif
+if leftmove > 0
+dec leftmove
+loop object 1,1,17
+move object 1,2
+gosub _update_prevpos
+endif
+if rightmove > 0
+dec rightmove
+loop object 1,1,17
+move object 1,2
+gosub _update_prevpos
+endif
+`NO MOVEMENT
+if leftmove = 0 and rightmove = 0 and upmove = 0 and downmove = 0 and upkey() = 0 and downkey() = 0 and leftkey() = 0 and rightkey() = 0 then stop object 1 ; set object frame 1,0
+
+`SCREEN JUMPING
+if object position z(1) > 350 then position object 1,object position x(1),0,1
+if object position z(1) < 0 then position object 1,object position x(1),0,349
+
+`fruit time!!
+inc fruittime
+if fruittime = 1000 and fruitactive = 0
+fruitactive = 1
+fruittype = rnd(2)+1
+texture object 10,fruittype+5
+show object 10
+_set_fdest:
+fspotx = (rnd(13)*50)+25
+fspotz = (rnd(6)*50)+25
+`checking landing point
+`generator
+if fspotx = object position x(194) and fspotz = object position z(194) then goto _set_fdest
+`chest
+if fspotx = object position x(195) and fspotz = object position z(195) then goto _set_fdest
+position object 10,fspotx,object position y(10),fspotz
+endif
+if fruittime = 1500
+fruittime = 0
+fruitactive = 0
+hide object 10
+position object 10,0,object position y(10),0
+endif
+`fruit coll with ed
+if fruitactive = 1 and object collision(1,10) = 1
+play sound 2
+fruittime = 0
+fruitactive = 0
+hide object 10
+ftext = 50
+inc playerscore,fruittype*1000
+endif
+`score text
+if ftext > 0
+dec ftext
+ftextx# = object screen x(10)
+ftexty# = object screen y(10)-(100-(ftext*2))
+fscore$ = str$(fruittype*1000)
+center text ftextx#,ftexty#,fscore$
+endif
+if fruitactive = 0 and ftext = 0 then position object 10,0,object position y(10),0
+
+`BUTTERFLY MOVEMENT
+if bfdelay = 50
+bfdelay = 0
+`set rotation
+for bfmove = 2 to 9
+if bfscattering(bfmove) = 2 then bfscattering(bfmove) = 0
+_bfyrot_retry:
+bfyrot = rnd(3)
+bfyrot = bfyrot*90
+yrotate object bfmove,bfyrot
+`check collision
+`walls or level boundaries
+move object bfmove,25
+`walls
+for wallcoll = 101 to 193
+if object collision(bfmove,wallcoll) = 1 then move object bfmove,-25 ; goto _bfyrot_retry
+next wallcoll
+`destroyable walls
+for wallcoll = 11 to 13
+if object exist(wallcoll) = 1
+if object collision(bfmove,wallcoll) = 1 then move object bfmove,-25 ; goto _bfyrot_retry
+endif
+next wallcoll
+`boundaries
+if object position z(bfmove) > 349 and object position z(bfmove) < 360 then move object bfmove,-25 ; goto _bfyrot_retry
+if object position z(bfmove) < 1 and object position z(bfmove) > -10 then move object bfmove,-25 ; goto _bfyrot_retry
+move object bfmove,-25
+`generator and chest
+move object bfmove,50
+position object 195,object position x(195),15,object position z(195)
+if object collision(bfmove,194) = 1 then move object bfmove,-50 ; goto _bfyrot_retry
+if object collision(bfmove,195) = 1 then move object bfmove,-50 ; goto _bfyrot_retry
+position object 195,object position x(195),20,object position z(195)
+move object bfmove,-50
+next bfmove
+endif
+inc bfdelay
+for bfmove = 2 to 9
+if bfscattering(bfmove) = 0 then move object bfmove,1
+next bfmove
+
+`collision with butterflies
+for bfcoll = 2 to 9
+if object collision(1,bfcoll) = 1
+for checkbfisnew = 1 to 8
+if bfrank(checkbfisnew) = bfcoll then goto _end_bfcoll
+next checkbfisnew
+for bfrank = 1 to 8
+if bfrank(bfrank) = 0 then bfrank(bfrank) = bfcoll ; bfscattering(bfcoll) = 0 ; goto _end_bfcoll
+next bfrank
+endif
+next bfcoll
+_end_bfcoll:
+`positioning bf in ed old pos
+for bfrank = 1 to 8
+if bfrank(bfrank) > 0 then position object bfrank(bfrank),pastposx(bfrank*10),15,pastposz(bfrank*10) ; yrotate object bfrank(bfrank),pastyrot(bfrank*10)
+next bfrank
+
+`spectre special ability
+for monmove = 21 to 24
+if monactive(monmove-20) = 1
+if montype(monmove-20) = 4
+hide object monmove
+if object position x(1) > object position x(monmove) - 100 and object position x(1) < object position x(monmove) + 100
+if object position z(1) > object position z(monmove) - 100 and object position z(1) < object position z(monmove) + 100
+show object monmove
+endif
+endif
+endif
+endif
+next monmove
+
+`monster activation
+if monactive(1) = 1 and monactive(2) = 1 and monactive(3) = 1 and monactive(4) = 1 then monadel = 300
+if monadel = 0
+monadel = 300
+for monavate = 21 to 24
+if monactive(monavate-20) = 0 then monavate(monavate-20) = 201 ; monrise = -201 ; show object monavate ; goto _mon_avated
+next monavate
+_mon_avated:
+endif
+dec monadel
+for monavate = 21 to 24
+if monavate(monavate-20) > 0
+inc monrise
+position object monavate,object position x(monavate),monrise,object position z(monavate)
+decarray = monavate(monavate-20)
+dec decarray
+monavate(monavate-20) = decarray
+endif
+if monavate(monavate-20) = 1
+monavate(monavate-20) = 0
+monactive(monavate-20) = 1
+endif
+next monavate
+
+
+`MONSTER MOVEMENT
+for monmove = 21 to 24
+if monactive(monmove-20) = 1
+if mondelay(monmove-20) = mondelaytarget(monmove-20)
+mondelay(monmove-20) = 0
+monwait(monmove-20) = 0
+`zombie special ability
+if montype(monmove-20) = 3
+`check up/down
+if object position x(1) = object position x(monmove) and gungemove = 0
+edzomgap = object position z(1) - object position z(monmove)
+if edzomgap < 0 then edzomgap = edzomgap*-1
+if edzomgap < 201
+if object position z(1) > object position z(monmove) then yrotate object monmove,0
+if object position z(1) < object position z(monmove) then yrotate object monmove,180
+position object 25,object position x(monmove),object position y(25),object position z(monmove)
+yrotate object 25,object angle y(monmove)
+move object 25,25
+play sound 11
+gungemove = 50
+monwait(monmove - 20) = 1
+goto _monster_wait
+endif
+endif
+`check left/right
+if object position z(1) = object position z(monmove) and gungemove = 0
+edzomgap = object position x(1) - object position x(monmove)
+if edzomgap < 0 then edzomgap = edzomgap*-1
+if edzomgap < 151
+if object position x(1) > object position x(monmove) then yrotate object monmove,90
+if object position x(1) < object position x(monmove) then yrotate object monmove,270
+position object 25,object position x(monmove),object position y(25),object position z(monmove)
+yrotate object 25,object angle y(monmove)
+move object 25,25
+gungemove = 50
+monwait(monmove - 20) = 1
+goto _monster_wait
+endif
+endif
+endif
+
+`set rotation
+_monyrot_retry:
+monchance = rnd(9)
+if monchance = 0 then monwait(monmove - 20) = 1 ; goto _monster_wait
+monyrot = rnd(3)
+monyrot = monyrot*90
+yrotate object monmove,monyrot
+`check collision
+`walls or level boundaries
+move object monmove,25
+`walls
+for wallcoll = 101 to 193
+if object collision(monmove,wallcoll) = 1 then move object monmove,-25 ; goto _monyrot_retry
+next wallcoll
+`destroyable walls
+for wallcoll = 11 to 13
+if object exist(wallcoll) = 1
+if object collision(monmove,wallcoll) = 1 then move object monmove,-25 ; goto _monyrot_retry
+endif
+next wallcoll
+`boundaries
+if object position z(monmove) = 350 then move object monmove,-25 ; goto _monyrot_retry
+if object position z(monmove) = 0 then move object monmove,-25 ; goto _monyrot_retry
+move object monmove,-25
+`generator and chest
+move object monmove,50
+position object 195,object position x(195),0,object position z(195)
+if object collision(monmove,194) = 1 then position object 195,object position x(195),20,object position z(195) ; move object monmove,-50 ; goto _monyrot_retry
+if object collision(monmove,195) = 1 then position object 195,object position x(195),20,object position z(195) ; move object monmove,-50 ; goto _monyrot_retry
+position object 195,object position x(195),20,object position z(195)
+move object monmove,-50
+`monster collision
+for monandmoncoll = 21 to 24
+if monactive(monandmoncoll-20)
+move object monandmoncoll,50
+endif
+next monandmoncoll
+for monandmoncoll = 21 to 24
+if monactive(monandmoncoll-20)
+if monandmoncoll = monmove then goto _no_monandmoncoll
+if object collision(monandmoncoll,monmove) = 1
+for monandmoncoll = 21 to 24
+if monactive(monandmoncoll-20)
+move object monandmoncoll,-50
+endif
+next monandmoncoll
+goto _monyrot_retry
+endif
+_no_monandmoncoll:
+endif
+next monandmoncoll
+for monandmoncoll = 21 to 24
+if monactive(monandmoncoll-20)
+move object monandmoncoll,-50
+endif
+next monandmoncoll
+_monster_wait:
+endif
+endif
+next monmove
+`monmove
+for monmove = 1 to 4
+if monactive(monmove) = 1
+mondelay = mondelay(monmove)
+inc mondelay
+mondelay(monmove) = mondelay
+endif
+next monmove
+for monmove = 21 to 24
+if monactive(monmove-20) = 1
+if monwait(monmove - 20) = 1 then stop object monmove ; set object frame monmove,0 ; goto _skip_monmove
+move object monmove,monspd#(monmove-20)
+loop object monmove,5,25
+_skip_monmove:
+endif
+next monmove
+
+`gungemove
+if gungemove > 0
+dec gungemove
+texture object 25,currgungepic
+inc gungepicchange
+if gungepicchange = 3 then inc currgungepic ; gungepicchange = 0
+if currgungepic > 20 then currgungepic = 11
+show object 25
+move object 25,3
+endif
+
+if gungemove < 0 then inc gungemove
+
+`gunge collide with eggdude
+if object collision(1,25) = 1 then play sound 12 ; hide object 25 ; gungemove = 0 ; gosub _ed_moncoll
+
+`gunge collide with bf
+for bfgungecol = 2 to 9
+for bfisranked = 1 to 8
+if bfrank(bfisranked) = bfgungecol
+if object position x(bfgungecol) > object position x(25)-15 and object position x(bfgungecol) < object position x(25)+15
+if object position z(bfgungecol) > object position z(25)-15 and object position z(bfgungecol) < object position z(25)+15
+play sound 12
+for emptyranks = bfisranked to 8
+_newgungesolo_randomscatter:
+solscatx(bfrank(emptyranks)) = (rnd(13)*50)+25
+solscatz(bfrank(emptyranks)) = (rnd(6)*50)+25
+`checking landing point
+`generator
+if solscatx(bfrank(emptyranks)) = object position x(194) and solscatz(bfrank(emptyranks)) = object position z(194) then goto _newgungesolo_randomscatter
+`chest
+if solscatx(bfrank(emptyranks)) = object position x(195) and solscatz(bfrank(emptyranks)) = object position z(195) then goto _newgungesolo_randomscatter
+bfscattering(bfrank(emptyranks)) = 1
+bfrank(emptyranks) = 0
+next emptyranks
+endif
+endif
+endif
+next bfisranked
+next bfgungecol
+
+`stop gunge
+if gungemove = 0 then hide object 25 ; position object 25,0,object position y(25),0
+
+`timer expire
+if minrem = 0 and secrem = 0 then stop music 1 ; gosub _ed_moncoll ; minrem = 2 ; secrem = 30 ; loop music 1
+
+`monster collide with eggdude
+for edmoncoll = 21 to 24
+if monactive(edmoncoll-20)
+if object collision(1,edmoncoll) = 1 then gosub _ed_moncoll
+endif
+next edmoncoll
+
+`monster collide with bf chain
+for bfmoncoll = 2 to 9
+for monbfcoll = 21 to 24
+if monactive(monbfcoll-20) = 1
+for bfisranked = 1 to 8
+if bfrank(bfisranked) = bfmoncoll
+if object position x(bfmoncoll) - (object size x(bfmoncoll)/2) > object position x(monbfcoll) - ((object size x(monbfcoll)*25)/2)
+if object position x(bfmoncoll) + (object size x(bfmoncoll)/2) < object position x(monbfcoll) + ((object size x(monbfcoll)*25)/2)
+if object position z(bfmoncoll) - (object size z(bfmoncoll)/2) > object position z(monbfcoll) - ((object size z(monbfcoll)*25)/2)
+if object position z(bfmoncoll) + (object size z(bfmoncoll)/2) < object position z(monbfcoll) + ((object size z(monbfcoll)*25)/2)
+for emptyranks = bfisranked to 8
+_newsolo_randomscatter:
+solscatx(bfrank(emptyranks)) = (rnd(13)*50)+25
+solscatz(bfrank(emptyranks)) = (rnd(6)*50)+25
+`checking landing point
+`generator
+if solscatx(bfrank(emptyranks)) = object position x(194) and solscatz(bfrank(emptyranks)) = object position z(194) then goto _newsolo_randomscatter
+`chest
+if solscatx(bfrank(emptyranks)) = object position x(195) and solscatz(bfrank(emptyranks)) = object position z(195) then goto _newsolo_randomscatter
+bfscattering(bfrank(emptyranks)) = 1
+bfrank(emptyranks) = 0
+next emptyranks
+endif
+endif
+endif
+endif
+endif
+next bfisranked
+endif
+next monbfcoll
+next bfmoncoll
+
+`scattering
+for bfsolscat = 2 to 9
+if bfscattering(bfsolscat) = 1
+point object bfsolscat,solscatx(bfsolscat),object position y(bfsolscat),solscatz(bfsolscat)
+move object bfsolscat,2
+yrotate object bfsolscat,soloscatterspin
+soloscatterspin = wrapvalue(soloscatterspin + 20)
+if object position x(bfsolscat) > solscatx(bfsolscat) - 3 and object position x(bfsolscat) < solscatx(bfsolscat) + 3
+if object position z(bfsolscat) > solscatz(bfsolscat) - 3 and object position z(bfsolscat) < solscatz(bfsolscat) + 3
+bfscattering(bfsolscat) = 2
+position object bfsolscat,solscatx(bfsolscat),object position y(bfsolscat),solscatz(bfsolscat)
+yrotate object bfsolscat,0
+endif
+endif
+endif
+next bfsolscat
+
+`ATTACKING
+`spacekey reset
+if spacekey() = 0 then spcpressed = 0
+if spacekey() = 1 and weapqty > 0 and attacking = 0 and spcpressed = 0
+attacking = 1
+dec weapqty
+spcpressed = 1
+`mallet
+if currweap = 1
+malletattack = 10
+malletrot = 0
+unglue object 31
+hide limb 1,5
+glue object to limb 31,14,0
+position object 31,-.5,9,-1.5
+show object 14
+endif
+`grenade
+if currweap = 2
+play sound 5
+unglue object 32
+position object 32,object position x(1),30,object position z(1)
+yrotate object 32,wrapvalue(object angle y(1)+90)
+move object 32,15
+yrotate object 32,wrapvalue(object angle y(1)-90)
+yrotate object 32,wrapvalue(object angle y(1)-8.5)
+grenthrow = 21
+endif
+`bomb
+if currweap = 3
+play sound 7
+bombdropped = 90
+unglue object 33
+scale object 33,150,150,150
+position object 33,object position x(1),0,object position z(1)
+endif
+`fireball
+if currweap = 4
+play sound 10
+fireball = 50
+currfire = 37
+firechange = 0
+position object 36,object position x(1),object position y(36),object position z(1)
+yrotate object 36,object angle y(1)
+show object 36
+endif
+endif
+
+`malletattack
+if currweap = 1
+if malletattack > 0
+inc malletrot,8
+xrotate object 14,360-malletrot
+dec malletattack
+`check collision with destr walls
+move object 1,20
+for deswall = 11 to 13
+if object exist(deswall) = 1
+if object position x(1) - 15 < object position x(deswall) and object position x(1) + 15 > object position x(deswall)
+if object position z(1) - 15 < object position z(deswall) and object position z(1) + 15 > object position z(deswall)
+play sound 9
+delete object deswall
+endif
+endif
+endif
+next deswall
+`check collision with monsters
+for killmon = 21 to 24
+if monactive(killmon-20) = 1
+if object position x(1) - 15 < object position x(killmon) and object position x(1) + 15 > object position x(killmon)
+if object position z(1) - 15 < object position z(killmon) and object position z(1) + 15 > object position z(killmon)
+play sound 8
+mondie(1,killmon-20) = 20
+mondie(2,killmon-20) = object angle y(1)
+endif
+endif
+endif
+next killmon
+move object 1,-20
+endif
+if malletattack = 0 and malletrec = 0 and attacking = 1 then malletrec = 10
+if malletrec > 0
+malletrot = wrapvalue(malletrot-8)
+xrotate object 14,360-malletrot
+dec malletrec
+endif
+if malletattack = 0 and malletrec = 0 and attacking = 1
+unglue object 31
+hide object 14
+show limb 1,5
+glue object to limb 31,1,5
+position object 31,-17,38,-2
+attacking = 0
+endif
+endif
+`grenade
+if currweap = 2
+if grenthrow > 0 then dec grenthrow ; move object 32,5.05
+if grenthrow >0 and grenthrow < 10 then xrotate object 32,90 ; move object 32,3 ; xrotate object 32,0
+if grenthrow >11 and grenthrow < 21 then xrotate object 32,270 ; move object 32,3 ; xrotate object 32,0
+if grenthrow = 1
+dec grenthrow
+position object 35,object position x(32),object position y(35),object position z(32)
+show object 35
+exploding = 16
+play sound 6
+yrotate object 32,object angle y(1)
+glue object to limb 32,1,5
+position object 32,-15,30,0
+endif
+if grenthrow = 0 and exploding = 0 then attacking = 0
+endif
+`bomb
+if currweap = 3
+if bombdropped > 0 then dec bombdropped
+if bombdropped = 1
+position object 35,object position x(33),object position y(35),object position z(33)
+show object 35
+exploding = 16
+play sound 6
+scale object 33,75,75,75
+glue object to limb 33,1,5
+position object 33,-18,23,0
+endif
+if bombdropped = 0 then attacking = 0
+endif
+`fireball
+if currweap = 4
+if fireball > 0
+dec fireball
+move object 36,5
+`check collision with destr walls
+for deswall = 11 to 13
+if object exist(deswall) = 1
+if object position x(36) - 15 < object position x(deswall) and object position x(36) + 15 > object position x(deswall)
+if object position z(36) - 15 < object position z(deswall) and object position z(36) + 15 > object position z(deswall)
+delete object deswall
+endif
+endif
+endif
+next deswall
+`check collision with monsters
+for killmon = 21 to 24
+if monactive(killmon-20) = 1
+if object position x(36) - 15 < object position x(killmon) and object position x(36) + 15 > object position x(killmon)
+if object position z(36) - 15 < object position z(killmon) and object position z(36) + 15 > object position z(killmon)
+mondie(1,killmon-20) = 20
+mondie(2,killmon-20) = object angle y(36)
+endif
+endif
+endif
+next killmon
+inc firechange
+if firechange = 5
+firechange = 0
+if currfire = 37
+currfire = 38
+else
+currfire = 37
+endif
+texture object 36,currfire
+endif
+endif
+if fireball = 0 and attacking = 1
+hide object 36
+position object 36,0,object position y(36),0
+attacking = 0
+endif
+endif
+`explosion
+if exploding > 0
+`check collision with destr walls
+for deswall = 11 to 13
+if object exist(deswall) = 1
+if object position x(35) - 30 < object position x(deswall) and object position x(35) + 30 > object position x(deswall)
+if object position z(35) - 30 < object position z(deswall) and object position z(35) + 30 > object position z(deswall)
+delete object deswall
+endif
+endif
+endif
+next deswall
+`check collision with monsters
+for killmon = 21 to 24
+if monactive(killmon-20) = 1
+if object position x(35) - 30 < object position x(killmon) and object position x(35) + 30 > object position x(killmon)
+if object position z(35) - 30 < object position z(killmon) and object position z(35) + 30 > object position z(killmon)
+mondie(1,killmon-20) = 20
+monfly = 0
+if object position x(35) < object position x(killmon) then monfly = 90
+if object position x(35) > object position x(killmon) then monfly = 270
+if monfly = 90
+if object position z(35) < object position z(killmon) then dec monfly,45
+if object position z(35) > object position z(killmon) then inc monfly,45
+endif
+if monfly = 270
+if object position z(35) < object position z(killmon) then inc monfly,45
+if object position z(35) > object position z(killmon) then dec monfly,45
+endif
+mondie(2,killmon-20) = monfly
+endif
+endif
+endif
+next killmon
+`anim
+texture object 35,21+16-exploding
+dec exploding
+endif
+if exploding = 0 then hide object 35 ; position object 35,0,object position y(35),0
+`kill monsters
+for killmon = 21 to 24
+if mondie(1,killmon-20) > 0
+show object killmon
+monactive(killmon-20) = 2
+mondie# = mondie(1,killmon-20)
+dec mondie#
+mondie(1,killmon-20) = mondie#
+stop object killmon
+mb4dy = object angle y(killmon)
+yrotate object killmon,mondie(2,killmon-20)
+xrotate object killmon,320
+move object killmon,5
+xrotate object killmon,0
+yrotate object killmon,mb4dy
+endif
+if mondie(1,killmon-20) = 1
+mondie(1,killmon-20) = 0
+monactive(killmon-20) = 0
+mondelay(killmon-20) = 0
+monwait(killmon-20) = 0
+hide object killmon
+position object killmon,monstartpos(1,killmon-20),0,monstartpos(2,killmon-20)
+yrotate object killmon,monstartpos(3,killmon-20)
+endif
+next killmon
+
+`POSITIONING CAMERA
+position camera object position x(1),160,object position z(1) - 110
+
+sync
+loop
+
+`SUBS:
+_update_prevpos:
+`calculating previous positions and y rotations
+for prevpos = 0 to 78
+prevpos2 = 80 - prevpos
+pastposx(prevpos2) = pastposx(prevpos2 - 1)
+pastposz(prevpos2) = pastposz(prevpos2 - 1)
+pastyrot(prevpos2) = pastyrot(prevpos2 - 1)
+next prevpos
+pastposx(1) = object position x(1)
+pastposz(1) = object position z(1)
+pastyrot(1) = object angle y(1)
+return
+
+_bf_inchest:
+pause music 1
+`reset weapons
+gosub _reset_weapeff
+
+bfscore = 25
+for monmove = 21 to 24
+if monactive(monmove-20) = 1
+stop object monmove
+set object frame monmove,0
+endif
+next monmove
+for bfsetup = 0 to 7
+bfinchest = 8 - bfsetup
+if bfrank(bfinchest) > 0
+point object bfrank(bfinchest),object position x(195),15,object position z(195)
+do
+`HUD
+ink rgb(255,255,255),0
+set text font "Arial"
+set text size 36
+`score
+textdest = 5
+if playerscore < 1000000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 100000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 10000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 1000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 100 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 10 then text textdest,5,"0" ; inc textdest,20
+text textdest,5,str$(playerscore)
+`timer
+text 300,5,str$(minrem)
+text 320,5,":"
+if secrem < 10
+text 330,5,"0"
+text 350,5,str$(secrem)
+else
+text 330,5,str$(secrem)
+endif
+`bfremain
+text 540,5,"x"
+text 560,5,str$(bfremain)
+`weaprem
+text 540,425,"x"
+text 560,425,str$(weapqty)
+
+`move bf to chest
+move object bfrank(bfinchest),2
+if object position x(bfrank(bfinchest)) > object position x(195) - 5 and object position x(bfrank(bfinchest)) < object position x(195) + 5
+if object position z(bfrank(bfinchest)) > object position z(195) - 5 and object position z(bfrank(bfinchest)) < object position z(195) + 5
+bfscore = bfscore*2
+bftext = 50
+goto _break_bfinchestloop
+endif
+endif
+if bftext > 0
+dec bftext
+bfscore$ = str$(bfscore)
+center text object screen x(195),object screen y(195)-(100-(bftext*2)),bfscore$
+endif
+sync
+loop
+_break_bfinchestloop:
+play sound 3
+`increas score
+inc playerscore,bfscore
+`-------------
+`lower bfremain
+dec bfremain
+`-------------
+hide object bfrank(bfinchest)
+position object bfrank(bfinchest),1000000,1000000,1000000
+bfrank(bfinchest) = 0
+endif
+next bfsetup
+bfscore$ = str$(bfscore)
+for bftexttoscreenatend = 1 to 10
+
+`HUD
+ink rgb(255,255,255),0
+set text font "Arial"
+set text size 36
+`score
+textdest = 5
+if playerscore < 1000000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 100000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 10000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 1000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 100 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 10 then text textdest,5,"0" ; inc textdest,20
+text textdest,5,str$(playerscore)
+`timer
+text 300,5,str$(minrem)
+text 320,5,":"
+if secrem < 10
+text 330,5,"0"
+text 350,5,str$(secrem)
+else
+text 330,5,str$(secrem)
+endif
+`bfremain
+text 540,5,"x"
+text 560,5,str$(bfremain)
+`weaprem
+text 540,425,"x"
+text 560,425,str$(weapqty)
+dec bftext
+center text object screen x(195),object screen y(195)-(100-(bftext*2)),bfscore$
+sync
+next bftexttoscreenatend
+bftext = 0
+if bfremain > 0 then loop music 1
+if bfremain = 0 then stop music 1
+return
+
+_ed_moncoll:
+play sound 4
+`reset weapons
+gosub _reset_weapeff
+`sad face
+texture limb 1,3,2
+`moving all objects to the end of current cycle
+`eggdude
+upmove = 0
+downmove = 0
+leftmove = 0
+rightmove = 0
+stop object 1
+set object frame 1,0
+`butterflies
+if bfdelay < 50
+for bfmove = 2 to 9
+for bfisranked = 1 to 8
+if bfrank(bfisranked) = bfmove then goto _skip_maoteocc
+next bfisranked
+move object bfmove,50-bfdelay
+_skip_maoteocc:
+next bfmove
+bfdelay = 50
+endif
+`monsters
+for monmove = 21 to 24
+if monactive(monmove-20) = 1
+if monwait(monmove-20) = 0
+stop object monmove
+set object frame monmove,0
+if mondelay(monmove-20) < mondelaytarget(monmove-20) then move object monmove,(mondelaytarget(monmove-20)-mondelay(monmove-20)) * monspd#(monmove-20)
+endif
+mondelay(monmove-20) = mondelaytarget(monmove-20)
+endif
+next monmove
+
+`reseting variables
+reachdest = 0
+reachdesttarget = 0
+
+`find out which objects will move
+dim whatmoves(9)
+whatmoves(1) = 1
+inc reachdesttarget
+for whatmoves = 1 to 8
+if bfrank(whatmoves) > 0 then whatmoves(bfrank(whatmoves)) = 1 ; inc reachdesttarget
+next whatmoves
+
+`pointing the objects at a destination
+dim odestx(9)
+dim odestz(9)
+for whatmoves = 1 to 9
+if whatmoves(whatmoves) = 1
+_new_randomscatter:
+odestx(whatmoves) = (rnd(13)*50)+25
+odestz(whatmoves) = (rnd(6)*50)+25
+`checking landing point
+`generator
+if odestx(whatmoves) = object position x(194) and odestz(whatmoves) = object position z(194) then goto _new_randomscatter
+`chest
+if odestx(whatmoves) = object position x(195) and odestz(whatmoves) = object position z(195) then goto _new_randomscatter
+`monsters (for eggdude)
+if whatmoves = 1
+`cmcfeds = check mon coll for ED scatter
+for cmcfeds = 21 to 24
+if monactive(cmcfeds-20) = 1
+if odestx(whatmoves) = object position x(cmcfeds) and odestz(whatmoves) = object position z(cmcfeds) then goto _new_randomscatter
+endif
+next cmcfeds
+endif
+endif
+next whatmoves
+
+`move objects
+`set ups scatter spin
+scatterspin# = object angle y(1)
+`move and spin
+repeat
+`HUD
+ink rgb(255,255,255),0
+set text font "Arial"
+set text size 36
+`score
+textdest = 5
+if playerscore < 1000000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 100000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 10000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 1000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 100 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 10 then text textdest,5,"0" ; inc textdest,20
+text textdest,5,str$(playerscore)
+`timer
+text 300,5,str$(minrem)
+text 320,5,":"
+if secrem < 10
+text 330,5,"0"
+text 350,5,str$(secrem)
+else
+text 330,5,str$(secrem)
+endif
+`bfremain
+text 540,5,"x"
+text 560,5,str$(bfremain)
+`weaprem
+text 540,425,"x"
+text 560,425,str$(weapqty)
+`update spin angle
+scatterspin# = wrapvalue(scatterspin# + 20)
+for whatmoves = 1 to 9
+if whatmoves(whatmoves) = 1
+if object position x(whatmoves) = odestx(whatmoves) and object position z(whatmoves) = odestz(whatmoves) then goto _obj_redscatdest
+point object whatmoves,odestx(whatmoves),object position y(whatmoves),odestz(whatmoves)
+move object whatmoves,2
+yrotate object whatmoves,scatterspin#
+if object position x(whatmoves) > odestx(whatmoves) - 3 and object position x(whatmoves) < odestx(whatmoves) + 3
+if object position z(whatmoves) > odestz(whatmoves) - 3 and object position z(whatmoves) < odestz(whatmoves) + 3
+position object whatmoves,odestx(whatmoves),object position y(whatmoves),odestz(whatmoves)
+if whatmoves = 1 then yrotate object whatmoves,180
+inc reachdest
+endif
+endif
+_obj_redscatdest:
+endif
+next whatmoves
+`POSITIONING CAMERA
+position camera object position x(1),160,object position z(1) - 110
+sync
+until reachdest = reachdesttarget
+`deleting temp arrays
+undim whatmoves(9)
+undim odestx(9)
+undim odestx(9)
+`emptying ranks
+for setup = 1 to 8
+bfrank(setup) = 0
+next setup
+`restore happy face
+texture limb 1,3,1
+`delaying gunge after death
+gungemove = -100
+dec playerlives
+return
+
+_reset_weapeff:
+`resetting weapon effects
+if attacking = 1
+attacking = 0
+malletattack = 0
+malletrec = 0
+grenthrow = 0
+bombdropped = 0
+fireball = 0
+`resetting mallet effect
+if currweap = 1
+unglue object 31
+xrotate object 14,0
+hide object 14
+show limb 1,5
+glue object to limb 31,1,5
+position object 31,-17,38,-2
+endif
+`resetting gren effect
+if currweap = 2
+yrotate object 32,object angle y(1)
+glue object to limb 32,1,5
+position object 32,-15,30,0
+endif
+`resetting bomb effect
+if currweap = 3
+scale object 33,75,75,75
+glue object to limb 33,1,5
+position object 33,-18,23,0
+endif
+if currweap = 4
+hide object 36
+position object 36,0,object position y(36),0
+endif
+endif
+`explosion reset
+if exploding > 0 then exploding = 0 ; hide object 35 ; position object 35,0,object position y(35),0
+return
+
+_end_lvl_score:
+for setup = 302 to 306
+hide object setup
+next setup
+ink rgb(255,255,255),0
+set text font "Arial"
+set text size 36
+repeat
+play sound 14
+`inc score
+if secrem > -1 then dec secrem ; inc playerscore,50
+if minrem > 0 and secrem < 0 then dec minrem ; secrem = 59
+`timer
+text 300,5,str$(minrem)
+text 320,5,":"
+if secrem < 10
+text 330,5,"0"
+text 350,5,str$(secrem)
+else
+text 330,5,str$(secrem)
+endif
+`score
+textdest = 275
+if playerscore < 1000000 then text textdest,100,"0" ; inc textdest,20
+if playerscore < 100000 then text textdest,100,"0" ; inc textdest,20
+if playerscore < 10000 then text textdest,100,"0" ; inc textdest,20
+if playerscore < 1000 then text textdest,100,"0" ; inc textdest,20
+if playerscore < 100 then text textdest,100,"0" ; inc textdest,20
+if playerscore < 10 then text textdest,100,"0" ; inc textdest,20
+text textdest,100,str$(playerscore)
+sync
+until minrem = 0 and secrem = 0
+`pacifist bonus
+if oweapqty = weapqty then pacifrem = 10000
+repeat
+play sound 14
+if pacifrem > 0 then dec pacifrem,100 ; inc playerscore,100
+`timer
+text 300,5,str$(minrem)
+text 320,5,":"
+if secrem < 10
+text 330,5,"0"
+text 350,5,str$(secrem)
+else
+text 330,5,str$(secrem)
+endif
+`score
+textdest = 275
+if playerscore < 1000000 then text textdest,100,"0" ; inc textdest,20
+if playerscore < 100000 then text textdest,100,"0" ; inc textdest,20
+if playerscore < 10000 then text textdest,100,"0" ; inc textdest,20
+if playerscore < 1000 then text textdest,100,"0" ; inc textdest,20
+if playerscore < 100 then text textdest,100,"0" ; inc textdest,20
+if playerscore < 10 then text textdest,100,"0" ; inc textdest,20
+text textdest,100,str$(playerscore)
+`pacif bonus
+center text 340,300,"Pacifist Bonus: "+str$(pacifrem)
+sync
+until pacifrem = 0
+`delay
+repeat
+`timer
+text 300,5,str$(minrem)
+text 320,5,":"
+if secrem < 10
+text 330,5,"0"
+text 350,5,str$(secrem)
+else
+text 330,5,str$(secrem)
+endif
+`score
+textdest = 275
+if playerscore < 1000000 then text textdest,100,"0" ; inc textdest,20
+if playerscore < 100000 then text textdest,100,"0" ; inc textdest,20
+if playerscore < 10000 then text textdest,100,"0" ; inc textdest,20
+if playerscore < 1000 then text textdest,100,"0" ; inc textdest,20
+if playerscore < 100 then text textdest,100,"0" ; inc textdest,20
+if playerscore < 10 then text textdest,100,"0" ; inc textdest,20
+text textdest,100,str$(playerscore)
+`pacif bonus
+center text 340,300,"Pacifist Bonus: "+str$(pacifrem)
+sync
+until spacekey() = 1
+for setup = 302 to 306
+show object setup
+next setup
+return
+
+_high_score:
+ink rgb(255,255,255),0
+set text font "Arial"
+set text size 50
+load bitmap "congrats.jpg",1
+get image 100,0,0,640,480
+delete bitmap 1
+paste image 100,0,0
+set gamma 255,255,255
+dim initials$(3)
+initials$(1) = "_"
+initials$(2) = "_"
+initials$(3) = "_"
+currinit = 1
+buttondel = 0
+dim hiscore#(10)
+dim hiscore$(10)
+load array "hiscoreno.dat",hiscore#(10)
+load array "hiscorename.dat",hiscore$(10)
+if playerscore > hiscore#(10)
+repeat
+paste image 100,0,0
+center text 280,400,initials$(1)
+center text 320,400,initials$(2)
+center text 360,400,initials$(3)
+if buttondel > 0 then dec buttondel
+if inkey$() = chr$(8) and buttondel = 0
+play sound 13
+if currinit > 1
+initials$(currinit-1) = "_"
+dec currinit
+buttondel = 10
+endif
+endif
+for inkey = 33 to 125
+if inkey$() = chr$(inkey) and buttondel = 0
+play sound 13
+if currinit < 4
+initials$(currinit) = chr$(inkey)
+inc currinit
+buttondel = 10
+endif
+endif
+next inkey
+sync
+until returnkey() = 1
+endif
+name$ = initials$(1) + initials$(2) + initials$(3)
+undim initials$(3)
+for setup = 1 to 9
+if playerscore > hiscore#(setup)
+for udscr = 1 to 10-setup
+hiscore#(11-udscr) = hiscore#(10-udscr)
+hiscore$(11-udscr) = hiscore$(10-udscr)
+next udscr
+hiscore#(setup) = playerscore
+hiscore$(setup) = name$
+goto _sb_done
+endif
+next setup
+if playerscore > hiscore#(10)
+hiscore#(setup) = playerscore
+hiscore$(setup) = name$
+endif
+_sb_done:
+save array "hiscoreno.dat",hiscore#(10)
+save array "hiscorename.dat",hiscore$(10)
+undim hiscore#(10)
+undim hiscore$(10)
+set gamma 0,0,0
+for setup = 1 to 14
+delete sound setup
+next setup
+delete music 1
+return
+
+`LEVELS
+level1:
+`numbers for rotation
+DATA 143
+`|
+`left border
+DATA 0,325,0,275,0,225,0,175,0,125,0,75,0,25
+`bulk
+DATA 100,325,200,325,500,325,600,325
+DATA 650,275
+DATA 50,225,150,225,200,225,450,225,500,225,600,225,650,225
+DATA 200,175,250,175,400,175,450,175,650,175
+DATA 50,125,150,125,200,125,450,125,500,125,600,125,650,125
+DATA 650,75
+DATA 100,25,200,25,500,25,600,25
+`right border
+DATA 700,325,700,275,700,225,700,175,700,125,700,75,700,25
+`_
+`top border
+DATA 25,350,75,350,125,350,175,350,275,350,325,350,375,350,425,350,475,350,575,350,625,350,675,350
+`bulk
+DATA 25,200,25,150
+DATA 75,300,75,250,75,100,75,50
+DATA 125,200,125,150
+DATA 175,300,175,50
+DATA 275,300,275,50
+DATA 325,300,325,250,325,100,325,50
+DATA 375,300,375,50
+DATA 525,300,525,250,525,100,525,50
+DATA 575,200,575,150
+DATA 625,200,625,150
+`bottom border
+DATA 25,0,75,0,125,0,175,0,275,0,325,0,375,0,425,0,475,0,575,0,625,0,675,0
+`generator
+DATA 325,175
+`chest
+DATA 25,175,90
+`eggdude
+DATA 625,175,270
+`butterflies
+DATA 325,325,90
+DATA 125,225,270,575,225,0
+DATA 425,175,180,675,175,180
+DATA 25,125,180
+DATA 175,25,270,525,25,90
+`destroyable walls
+DATA 225,300,0,575,50,0,600,275,90
+`monsters
+DATA 1,325,225,90
+DATA 1,275,175,0
+DATA 1,375,175,180
+DATA 1,325,125,270
+
+level2:
+`numbers for rotation
+DATA 143
+`|
+`left border
+DATA 0,325,0,275,0,225,0,175,0,125,0,75,0,25
+`bulk
+DATA 150,325,550,325
+DATA 50,275,100,275,150,275,250,275,400,275
+DATA 200,225,650,225
+DATA 50,175,400,175,450,175,600,175,650,175
+DATA 100,125,150,125,250,125,300,125,600,125,650,125
+DATA 50,75,150,75,200,75,250,75,350,75,450,75,650,75
+DATA 250,25,500,25
+`right border
+DATA 700,325,700,275,700,225,700,175,700,125,700,75,700,25
+`_
+`top border
+DATA 25,350,75,350,125,350,175,350,275,350,325,350,375,350,425,350,475,350,575,350,625,350,675,350
+`bulk
+DATA 75,300,75,50
+DATA 125,200
+DATA 175,300,175,150
+DATA 225,300,225,200
+DATA 275,250,275,200
+DATA 325,300,325,250
+DATA 375,250,375,50
+DATA 425,300,425,100
+DATA 475,300,475,250,475,150
+DATA 525,300,525,250,525,100
+DATA 575,250,575,200,575,50
+DATA 625,300,625,50
+`bottom border
+DATA 25,0,75,0,125,0,175,0,275,0,325,0,375,0,425,0,475,0,575,0,625,0,675,0
+`generator
+DATA 325,175
+`chest
+DATA 75,275,180
+`eggdude
+DATA 175,325,90
+`butterflies
+DATA 275,325,90,375,325,180
+DATA 225,275,270,275,275,0,375,275,270,425,275,90
+DATA 75,75,90
+DATA 275,25,90
+`destroyable walls
+DATA 250,325,90,350,25,90,525,50,0
+`monsters
+DATA 1,325,225,270
+DATA 2,275,175,270
+DATA 2,375,175,0
+DATA 1,325,125,90
+
+level3:
+`numbers for rotation
+DATA 139
+`|
+`left border
+DATA 0,325,0,275,0,225,0,175,0,125,0,75,0,25
+`bulk
+DATA 50,325,150,325,550,325
+DATA 150,275,200,275,400,275,550,275
+DATA 100,225,350,225,400,225
+DATA 300,175,600,175
+DATA 150,125,200,125,300,125,450,125,500,125,550,125,650,125
+DATA 50,75,100,75,250,75,450,75
+DATA 250,25,500,25
+`right border
+DATA 700,325,700,275,700,225,700,175,700,125,700,75,700,25
+`_
+`top border
+DATA 25,350,75,350,125,350,175,350,275,350,325,350,375,350,425,350,475,350,575,350,625,350,675,350
+`bulk
+DATA 25,200
+DATA 75,300,75,250,75,150
+DATA 125,50
+DATA 175,200
+DATA 225,300
+DATA 275,250,275,200,275,150
+DATA 325,300,325,250
+DATA 375,150,375,100,375,50
+DATA 425,300,425,50
+DATA 475,300,475,250,475,200
+DATA 575,250,575,200,575,100,575,50
+DATA 625,300,625,250,625,150,625,50
+DATA 675,200,675,100
+`bottom border
+DATA 25,0,75,0,125,0,175,0,275,0,325,0,375,0,425,0,475,0,575,0,625,0,675,0
+`generator
+DATA 425,175
+`chest
+DATA 275,175,270
+`eggdude
+DATA 575,125,0
+`butterflies
+DATA 325,325,90,575,325,180
+DATA 225,275,180
+DATA 75,225,270
+DATA 125,125,0,675,125,0
+DATA 375,25,270,525,25,90
+`destroyable walls
+DATA 250,275,90,275,100,0,525,50,0
+`monsters
+DATA 1,425,225,0
+DATA 2,375,175,270
+DATA 2,475,175,90
+DATA 1,425,125,180
+
+level4:
+`numbers for rotation
+DATA 135
+`|
+`left border
+DATA 0,325,0,275,0,225,0,175,0,125,0,75,0,25
+`bulk
+DATA 100,325,200,325,600,325
+DATA 350,275
+DATA 300,225,400,225,550,225,600,225,650,225
+DATA 50,175,100,175,150,175,350,175,450,175,650,175
+DATA 400,125,500,125,600,125
+DATA 50,75,150,75
+DATA 200,25
+`right border
+DATA 700,325,700,275,700,225,700,175,700,125,700,75,700,25
+`_
+`top border
+DATA 25,350,75,350,125,350,175,350,275,350,325,350,375,350,425,350,475,350,575,350,625,350,675,350
+`bulk
+DATA 25,300
+DATA 75,250,75,100,75,50
+DATA 125,250
+DATA 175,300,175,150
+DATA 225,300,225,250,225,100,225,50
+DATA 275,300,275,150,275,100,275,50
+DATA 325,300,325,150,325,50
+DATA 375,300,375,100,375,50
+DATA 425,300,425,250,425,50
+DATA 475,300,475,200,475,50
+DATA 525,300,525,250,525,100,525,50
+DATA 625,300,625,50
+DATA 675,100
+`bottom border
+DATA 25,0,75,0,125,0,175,0,275,0,325,0,375,0,425,0,475,0,575,0,625,0,675,0
+`generator
+DATA 175,225
+`chest
+DATA 75,75,90
+`eggdude
+DATA 525,125,90
+`butterflies
+DATA 225,325,90,625,325,90
+DATA 125,275,270
+DATA 425,225,180
+DATA 325,175,270,625,175,180
+DATA 225,25,90,525,25,270
+`destroyable walls
+DATA 150,275,90,350,25,90,550,25,90
+`monsters
+DATA 2,175,275,90
+DATA 2,125,225,270
+DATA 2,225,225,90
+DATA 2,175,175,90
+
+level5:
+`numbers for rotation
+DATA 139
+`|
+`left border
+DATA 0,325,0,275,0,225,0,175,0,125,0,75,0,25
+`bulk
+DATA 100,325,200,325,350,325,550,325
+DATA 50,275,100,275,400,275,600,275
+DATA 200,225,500,225,650,225
+DATA 50,175,100,175,250,175,400,175
+DATA 300,125,350,125,450,125
+DATA 150,75,350,75,400,75,650,75
+DATA 50,25,200,25,550,25
+`right border
+DATA 700,325,700,275,700,225,700,175,700,125,700,75,700,25
+`_
+`top border
+DATA 25,350,75,350,125,350,175,350,275,350,325,350,375,350,425,350,475,350,575,350,625,350,675,350
+`bulk
+DATA 25,200,25,100
+DATA 75,100
+DATA 125,50
+DATA 175,300,175,150
+DATA 225,300,225,100,225,50
+DATA 275,300,275,250,275,200,275,50
+DATA 325,250,325,200
+DATA 375,50
+DATA 425,200,425,150
+DATA 475,300,475,250,475,50
+DATA 525,300,525,250,525,150,525,50
+DATA 575,150,575,100
+DATA 625,300,625,200,625,150
+`bottom border
+DATA 25,0,75,0,125,0,175,0,275,0,325,0,375,0,425,0,475,0,575,0,625,0,675,0
+`generator
+DATA 125,225
+`chest
+DATA 25,25,0
+`eggdude
+DATA 75,325,180
+`butterflies
+DATA 225,325,90,525,325,270
+DATA 625,225,270
+DATA 25,175,180,275,175,90,425,175,90
+DATA 225,25,90,575,25,0
+`destroyable walls
+DATA 350,275,90,475,150,0,100,75,90
+`monsters
+DATA 2,125,275,90
+DATA 3,75,225,270
+DATA 1,175,225,180
+DATA 3,125,175,180
+
+level6:
+`numbers for rotation
+DATA 147
+`|
+`left border
+DATA 0,325,0,275,0,225,0,175,0,125,0,75,0,25
+`bulk
+DATA 250,325,550,325,600,325
+DATA 400,275,450,275,650,275
+DATA 50,225,150,225,350,225,500,225,550,225,600,225,650,225
+DATA 100,175,200,175,350,175,400,175,450,175,500,175,600,175,650,175
+DATA 50,125,150,125,200,125,450,125,500,125,550,125,600,125
+DATA 200,75,250,75,400,75,550,75
+DATA 550,25
+`right border
+DATA 700,325,700,275,700,225,700,175,700,125,700,75,700,25
+`_
+`top border
+DATA 25,350,75,350,125,350,175,350,275,350,325,350,375,350,425,350,475,350,575,350,625,350,675,350
+`bulk
+DATA 75,300,75,250,75,100,75,50
+DATA 125,300,125,250,125,100,125,50
+DATA 175,300
+DATA 225,250
+DATA 275,100
+DATA 325,300,325,250,325,100,325,50
+DATA 375,300
+DATA 425,50
+DATA 475,300,475,50
+DATA 575,200
+DATA 625,50
+DATA 675,100
+`bottom border
+DATA 25,0,75,0,125,0,175,0,275,0,325,0,375,0,425,0,475,0,575,0,625,0,675,0
+`generator
+DATA 275,175
+`chest
+DATA 575,325,180
+`eggdude
+DATA 425,75,0
+`butterflies
+DATA 125,325,90,325,325,270,525,325,180
+DATA 675,225,180
+DATA 75,125,0
+DATA 275,75,90
+DATA 25,25,90,575,25,90
+`destroyable walls
+DATA 250,275,90,250,25,90,575,150,0
+`monsters
+DATA 1,275,225,0
+DATA 3,225,175,0
+DATA 3,325,175,180
+DATA 1,275,125,270
+
+level7:
+`numbers for rotation
+DATA 129
+`|
+`left border
+DATA 0,325,0,275,0,225,0,175,0,125,0,75,0,25
+`bulk
+DATA 50,275,650,275
+DATA 250,225,350,225,500,225
+DATA 50,175,100,175,400,175,450,175,650,175
+DATA 350,125,450,125,600,125
+DATA 50,75,650,75
+`right border
+DATA 700,325,700,275,700,225,700,175,700,125,700,75,700,25
+`_
+`top border
+DATA 25,350,75,350,125,350,175,350,275,350,325,350,375,350,425,350,475,350,575,350,625,350,675,350
+`bulk
+DATA 75,300,75,50
+DATA 125,300,125,250,125,100,125,50
+DATA 175,300,175,250,175,200,175,150,175,100,175,50
+DATA 225,300,225,50
+DATA 275,300,275,250,275,200,275,150,275,100,275,50
+DATA 325,300,325,100,325,50
+DATA 375,250
+DATA 425,300,425,250,425,100,425,50
+DATA 475,300,475,50
+DATA 525,300,525,150,525,100,525,50
+DATA 575,300,575,250,575,200,575,50
+DATA 625,300,625,50
+`bottom border
+DATA 25,0,75,0,125,0,175,0,275,0,325,0,375,0,425,0,475,0,575,0,625,0,675,0
+`generator
+DATA 375,75
+`chest
+DATA 275,225,90
+`eggdude
+DATA 525,125,90
+`butterflies
+DATA 125,325,90,525,325,90
+DATA 375,225,90,575,225,90
+DATA 175,175,90
+DATA 275,125,270
+DATA 75,75,90
+DATA 325,25,90
+`destroyable walls
+DATA 350,325,90,450,225,90,325,150,0
+`monsters
+DATA 2,375,125,0
+DATA 2,325,75,270
+DATA 2,425,75,90
+DATA 3,375,25,270
+
+level8:
+`numbers for rotation
+DATA 142
+`|
+`left border
+DATA 0,325,0,275,0,225,0,175,0,125,0,75,0,25
+`bulk
+DATA 150,325,250,325,500,325,650,325
+DATA 50,275,550,275,600,275
+DATA 100,225,150,225,350,225,400,225,550,225
+DATA 200,175,350,175,600,175,650,175
+DATA 50,125,150,125,400,125,500,125
+DATA 350,75,450,75,500,75,650,75
+DATA 100,25,150,25,400,25,550,25
+`right border
+DATA 700,325,700,275,700,225,700,175,700,125,700,75,700,25
+`_
+`top border
+DATA 25,350,75,350,125,350,175,350,275,350,325,350,375,350,425,350,475,350,575,350,625,350,675,350
+`bulk
+DATA 25,50
+DATA 75,300,75,200,75,150
+DATA 125,100
+DATA 175,300,175,200,175,50
+DATA 225,100
+DATA 275,150,275,100,275,50
+DATA 325,300
+DATA 375,150,375,50
+DATA 425,300,425,200,425,150
+DATA 475,300,475,250
+DATA 525,200,525,150,525,100
+DATA 575,150
+DATA 625,250,625,100,625,50
+`bottom border
+DATA 25,0,75,0,125,0,175,0,275,0,325,0,375,0,425,0,475,0,575,0,625,0,675,0
+`generator
+DATA 275,225
+`chest
+DATA 525,125,90
+`eggdude
+DATA 575,175,270
+`butterflies
+DATA 275,325,90
+DATA 75,275,180,625,275,0
+DATA 375,175,90
+DATA 125,125,0
+DATA 625,75,270
+DATA 25,25,90,375,25,270
+`destroyable walls
+DATA 550,325,90,250,275,90,225,50,0
+`monsters
+DATA 2,275,275,0
+DATA 4,225,225,270
+DATA 4,325,225,180
+DATA 1,275,175,270
+
+level9:
+`numbers for rotation
+DATA 135
+`|
+`left border
+DATA 0,325,0,275,0,225,0,175,0,125,0,75,0,25
+`bulk
+DATA 250,325,500,325,600,325
+DATA 550,275,600,275,650,275
+DATA 350,225,400,225
+DATA 450,175,500,175,600,175
+DATA 300,125,500,125
+DATA 400,75,450,75,550,75,600,75,650,75
+DATA 250,25,400,25,600,25
+`right border
+DATA 700,325,700,275,700,225,700,175,700,125,700,75,700,25
+`_
+`top border
+DATA 25,350,75,350,125,350,175,350,275,350,325,350,375,350,425,350,475,350,575,350,625,350,675,350
+`bulk
+DATA 25,250,25,150,25,50
+DATA 75,300,75,200,75,100
+DATA 125,300,125,250,125,200,125,150,125,100,125,50
+DATA 175,300,175,250,175,200,175,150,175,100,175,50
+DATA 225,250,225,150
+DATA 275,300,275,200
+DATA 325,50
+DATA 375,300
+DATA 425,250,425,150
+DATA 475,300,475,50
+DATA 525,250,525,150,525,50
+DATA 575,200
+DATA 625,200
+DATA 675,150
+`bottom border
+DATA 25,0,75,0,125,0,175,0,275,0,325,0,375,0,425,0,475,0,575,0,625,0,675,0
+`generator
+DATA 325,175
+`chest
+DATA 275,325,90
+`eggdude
+DATA 475,325,270
+`butterflies
+DATA 25,325,90,625,325,180
+DATA 425,225,90
+DATA 225,175,270
+DATA 25,75,0
+DATA 275,25,90,475,25,270,625,25,0
+`destroyable walls
+DATA 425,300,0,225,50,0,500,25,90
+`monsters
+DATA 3,325,225,0
+DATA 3,275,175,270
+DATA 4,375,175,90
+DATA 4,325,125,180
+
+level10:
+`numbers for rotation
+DATA 146
+`|
+`left border
+DATA 0,325,0,275,0,225,0,175,0,125,0,75,0,25
+`bulk
+DATA 350,325,450,325
+DATA 50,275,150,275,250,275,400,275,550,275,600,275
+DATA 200,225,400,225,450,225,600,225,650,225
+DATA 50,175,550,175,600,175
+DATA 50,125,100,125,200,125,350,125,450,125,550,125
+DATA 150,75,200,75,250,75,550,75,600,75,650,75
+DATA 200,25,250,25,450,25,550,25
+`right border
+DATA 700,325,700,275,700,225,700,175,700,125,700,75,700,25
+`_
+`top border
+DATA 25,350,75,350,125,350,175,350,275,350,325,350,375,350,425,350,475,350,575,350,625,350,675,350
+`bulk
+DATA 75,250,75,50
+DATA 125,300,125,200,125,150
+DATA 175,300
+DATA 225,150
+DATA 275,300,275,200,275,150,275,100
+DATA 325,250,325,200,325,50
+DATA 375,250,375,100,375,50
+DATA 425,150
+DATA 475,300
+DATA 525,300
+DATA 625,300,625,100
+DATA 675,150
+`bottom border
+DATA 25,0,75,0,125,0,175,0,275,0,325,0,375,0,425,0,475,0,575,0,625,0,675,0
+`generator
+DATA 375,175
+`chest
+DATA 625,75,180
+`eggdude
+DATA 475,325,90
+`butterflies
+DATA 125,275,270,375,275,270,625,275,90
+DATA 75,75,0
+DATA 225,25,0,275,25,0,525,25,270,675,25,270
+`destroyable walls
+DATA 325,300,0,300,75,90,450,75,90
+`monsters
+DATA 1,375,225,270
+DATA 2,325,175,270
+DATA 3,425,175,90
+DATA 1,375,125,90
+
+level11:
+`numbers for rotation
+DATA 146
+`|
+`left border
+DATA 0,325,0,275,0,225,0,175,0,125,0,75,0,25
+`bulk
+DATA 300,325
+DATA 50,275,100,275,150,275,300,275,350,275,650,275
+DATA 350,225,500,225,600,225
+DATA 50,175,100,175,150,175,300,175,450,175,500,175,550,175,650,175
+DATA 150,125,300,125,600,125
+DATA 50,75,150,75,200,75,250,75,350,75,450,75
+DATA 200,25,300,25,400,25,550,25,600,25
+`right border
+DATA 700,325,700,275,700,225,700,175,700,125,700,75,700,25
+`_
+`top border
+DATA 25,350,75,350,125,350,175,350,275,350,325,350,375,350,425,350,475,350,575,350,625,350,675,350
+`bulk
+DATA 75,150,75,50
+DATA 125,100
+DATA 175,250
+DATA 225,250,225,100
+DATA 275,250
+DATA 325,50
+DATA 375,250,375,150,375,100
+DATA 425,300,425,250,425,200
+DATA 475,300,475,100,475,50
+DATA 575,300,575,150
+DATA 625,250,625,200,625,100,625,50
+`bottom border
+DATA 25,0,75,0,125,0,175,0,275,0,325,0,375,0,425,0,475,0,575,0,625,0,675,0
+`generator
+DATA 225,175
+`chest
+DATA 625,225,90
+`eggdude
+DATA 475,275,270
+`butterflies
+DATA 275,275,0,525,275,90
+DATA 375,225,90
+DATA 75,175,0,625,175,180
+DATA 125,75,270
+DATA 325,25,90,625,25,90
+`destroyable walls
+DATA 500,275,90,250,25,90,525,50,0
+`monsters
+DATA 2,225,225,270
+DATA 3,175,175,180
+DATA 4,275,175,0
+DATA 3,225,125,90
+
+level12:
+`numbers for rotation
+DATA 145
+`|
+`left border
+DATA 0,325,0,275,0,225,0,175,0,125,0,75,0,25
+`bulk
+DATA 50,325,200,325,250,325,300,325
+DATA 100,275,150,275,650,275
+DATA 100,225,200,225,250,225,300,225,450,225
+DATA 50,175,500,175,550,175,650,175
+DATA 100,125,150,125,250,125,300,125,350,125
+DATA 50,75,450,75,600,75,650,75
+DATA 150,25,250,25,300,25,400,25,500,25,550,25
+`right border
+DATA 700,325,700,275,700,225,700,175,700,125,700,75,700,25
+`_
+`top border
+DATA 25,350,75,350,125,350,175,350,275,350,325,350,375,350,425,350,475,350,575,350,625,350,675,350
+`bulk
+DATA 25,250,25,100
+DATA 75,100
+DATA 125,50
+DATA 175,300,175,200,175,150
+DATA 225,250,225,100,225,50
+DATA 325,300,325,200,325,150,325,50
+DATA 375,250
+DATA 425,300,425,150,425,50
+DATA 525,300,525,100
+DATA 575,250,575,150
+DATA 625,200,625,50
+`bottom border
+DATA 25,0,75,0,125,0,175,0,275,0,325,0,375,0,425,0,475,0,575,0,625,0,675,0
+`generator
+DATA 375,175
+`chest
+DATA 625,75,0
+`eggdude
+DATA 625,175,270
+`butterflies
+DATA 25,325,180,325,325,90,675,325,180
+DATA 175,275,90
+DATA 175,125,180
+DATA 25,75,180
+DATA 275,25,0,425,25,90
+`destroyable walls
+DATA 375,300,0,250,275,90,400,75,90
+`monsters
+DATA 4,375,225,270
+DATA 4,325,175,270
+DATA 4,425,175,90
+DATA 4,375,125,180
+
+`functions
+
+function endgame(egmessage$)
+for fade = 0 to 255 step 3
+set gamma 255-fade,255-fade,255-fade
+`HUD
+ink rgb(255,255,255),0
+set text font "Arial"
+set text size 36
+
+`score
+textdest = 5
+if playerscore < 1000000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 100000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 10000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 1000 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 100 then text textdest,5,"0" ; inc textdest,20
+if playerscore < 10 then text textdest,5,"0" ; inc textdest,20
+text textdest,5,str$(playerscore)
+`timer
+text 300,5,str$(minrem)
+text 320,5,":"
+if secrem < 10
+text 330,5,"0"
+text 350,5,str$(secrem)
+else
+text 330,5,str$(secrem)
+endif
+`lives
+if playerlives < 3 then hide object 306
+if playerlives < 2 then hide object 305
+if playerlives < 1 then hide object 304
+`bfremain
+text 540,5,"x"
+text 560,5,str$(bfremain)
+`weaprem
+text 540,425,"x"
+text 560,425,str$(weapqty)
+`game over text
+center text 320,240,egmessage$
+sync
+next fade
+
+for delobj = 1 to 350
+if object exist(delobj) = 1 then delete object delobj
+next delobj
+
+delete matrix 1
+
+`setting up arrays
+undim pastposx(80)
+undim pastposz(80)
+undim pastyrot(80)
+undim bfrank(8)
+undim bfscattering(9)
+undim solscatx(9)
+undim solscatz(9)
+undim monstermove$(4)
+undim monspd#(4)
+undim mondelaytarget(4)
+undim monactive(4)
+undim mondelay(4)
+undim monwait(4)
+undim montype(4)
+undim mondie(2,4)
+undim monstartpos(3,4)
+undim monavate(4)
+
+endfunction
